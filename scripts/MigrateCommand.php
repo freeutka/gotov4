@@ -32,7 +32,7 @@ class MigrateCommand
             $content = file_get_contents($file);
             $content = str_replace(
                 "Jexactyl\\Traits\\Commands\\EnvironmentWriterTrait",
-                "Everest\\Traits\\Commands\\EnvironmentWriterTrait",
+                "Jexactyl\\Traits\\Commands\\EnvironmentWriterTrait",
                 $content
             );
             file_put_contents($file, $content);
