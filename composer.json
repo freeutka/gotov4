@@ -11,5 +11,7 @@
         "psr-4": {
             "Scripts\\": "scripts/"
         }
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }
