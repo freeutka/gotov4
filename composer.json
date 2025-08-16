@@ -3,7 +3,6 @@
     "description": "Upgrade from Jexactyl v3 to all new v4.",
     "require": {
         "php": ">=8.0",
-        "freeutka/gotov4": "dev-main"
     },
     "autoload": {
         "psr-4": {
