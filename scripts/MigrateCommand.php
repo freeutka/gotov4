@@ -21,28 +21,25 @@ class MigrateCommand
 
         chdir($dir);
 
+        // Put application into maintenance mode
         self::exec("php artisan down");
 
+        // Download the latest v4 panel
         self::exec("curl -L -o panel.tar.gz https://github.com/Jexactyl/Jexactyl/releases/download/v4.0.0-beta7/panel.tar.gz");
 
+        // Extract panel archive into current directory, replacing old files
+        self::exec("tar -xzf panel.tar.gz --strip-components=1");
+
+        // Set correct permissions for Laravel cache/storage
         self::exec("chmod -R 755 storage/* bootstrap/cache");
 
-        $file = "$dir/app/Console/Commands/Environment/EmailSettingsCommand.php";
-        if (file_exists($file)) {
-            $content = file_get_contents($file);
-            $content = str_replace(
-                "Jexactyl\\Traits\\Commands\\EnvironmentWriterTrait",
-                "Jexactyl\\Traits\\Commands\\EnvironmentWriterTrait",
-                $content
-            );
-            file_put_contents($file, $content);
-        } else {
-            echo "⚠️ File $file not found!\n";
-        }
-
+        // Install PHP dependencies
         self::exec("composer install --no-dev --optimize-autoloader");
+
+        // Clear all Laravel caches
         self::exec("php artisan optimize:clear");
 
+        // Remove specific old migrations if they exist
         $migrations = [
             "2024_03_30_211213_create_tickets_table.php",
             "2024_03_30_211447_create_ticket_messages_table.php",
@@ -53,16 +50,20 @@ class MigrateCommand
             $path = "$dir/database/migrations/$mig";
             if (file_exists($path)) {
                 unlink($path);
-                echo "Deleted disturbing migrations: $path\n";
+                echo "Deleted disturbing migration: $path\n";
             }
         }
 
+        // Run database migrations and seeders
         self::exec("php artisan migrate --seed --force");
-        self::exec("chown -R www-data:www-data $dir/*");
+
+        // Restart queues
         self::exec("php artisan queue:restart");
+
+        // Bring the application back online
         self::exec("php artisan up");
 
-        echo "✅ Migration to v4 completed successfully! Thanks for choosing Jexactyl\n";
+        echo "✅ Migration to v4 completed successfully! Your panel should now display v4.\n";
     }
 
     private static function exec(string $cmd)
@@ -70,7 +71,7 @@ class MigrateCommand
         echo ">>> $cmd\n";
         passthru($cmd, $code);
         if ($code !== 0) {
-            echo "⚠️ Error during execution: $cmd (код $code)\n";
+            echo "⚠️ Error during execution: $cmd (code $code)\n";
             exit($code);
         }
     }
