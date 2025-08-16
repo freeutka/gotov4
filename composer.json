@@ -3,5 +3,13 @@
     "description": "Upgrade from Jexactyl v3 to all new v4.",
     "require": {
         "php": ">=8.1"
+    },
+    "scripts": {
+        "jexactyl:gotov4": "Scripts\\MigrateCommand::run"
+    },
+    "autoload": {
+        "psr-4": {
+            "Scripts\\": "scripts/"
+        }
     }
 }
