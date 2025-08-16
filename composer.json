@@ -4,14 +4,12 @@
     "require": {
         "php": ">=8.0"
     },
-    "scripts": {
-        "post-install-cmd": [
-            "Scripts\\MigrateCommand::run"
-        ]
-    },
     "autoload": {
         "psr-4": {
             "Scripts\\": "scripts/"
         }
-    }
+    },
+    "bin": [
+        "bin/migrate-v4"
+    ]
 }
