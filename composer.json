@@ -1,16 +1,15 @@
 {
-    "name": "freeutka/gotov4",
-    "description": "Upgrade from Jexactyl v3 to all new v4.",
     "require": {
-        "php": ">=8.0"
-    },
-    "scripts": {
-        "jexactyl:gotov4": "Scripts\\MigrateCommand::run"
+        "php": ">=8.0",
+        "freeutka/gotov4": "dev-main"
     },
     "autoload": {
         "psr-4": {
-            "Scripts\\": "scripts/"
+            "Scripts\\": "vendor/freeutka/gotov4/scripts/"
         }
+    },
+    "scripts": {
+        "jexactyl:gotov4": "Scripts\\MigrateCommand::run"
     },
     "minimum-stability": "dev",
     "prefer-stable": true
