@@ -25,7 +25,16 @@ class MigrateCommand
 
         self::exec("curl -L -o panel.tar.gz https://github.com/Jexactyl/Jexactyl/releases/download/v4.0.0-beta7/panel.tar.gz");
 
-        self::exec("chmod -R 755 storage/* bootstrap/cache");
+        self::exec("mkdir -p panel-temp");
+        self::exec("tar -xzf panel.tar.gz -C panel-temp --strip-components=1");
+
+        self::exec("rsync -a --exclude='.env' --exclude='storage' panel-temp/ ./");
+
+        self::exec("rm -rf panel-temp panel.tar.gz");
+
+        self::exec("chmod -R 755 storage bootstrap/cache");
+
+        self::exec("composer install --no-dev --optimize-autoloader");
 
         $file = "$dir/app/Console/Commands/Environment/EmailSettingsCommand.php";
         if (file_exists($file)) {
@@ -41,7 +50,6 @@ class MigrateCommand
             echo "⚠️ Файл $file не найден!\n";
         }
 
-        self::exec("composer install --no-dev --optimize-autoloader");
         self::exec("php artisan optimize:clear");
 
         $migrations = [
@@ -59,7 +67,9 @@ class MigrateCommand
         }
 
         self::exec("php artisan migrate --seed --force");
+
         self::exec("chown -R www-data:www-data $dir/*");
+
         self::exec("php artisan queue:restart");
         self::exec("php artisan up");
 
