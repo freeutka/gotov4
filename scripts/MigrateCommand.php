@@ -12,8 +12,7 @@ class MigrateCommand
     public static function run()
     {
         echo self::COLOR_YELLOW . "Select directory:\n" . self::COLOR_RESET;
-        echo "1) /var/www/jexactyl (choose this if you installed the panel using the official Jexactyl documentation)\n";
-        echo "2) /var/www/pterodactyl (choose this if you migrated from Pterodactyl to Jexactyl)\n";
+        echo "1) /var/www/jexactyl\n2) /var/www/pterodactyl\n";
         $choice = trim(fgets(STDIN));
 
         $dir = $choice === "2" ? "/var/www/pterodactyl" : "/var/www/jexactyl";
@@ -27,10 +26,8 @@ class MigrateCommand
 
         chdir($dir);
 
-        // Put application into maintenance mode
         self::exec("php artisan down");
 
-        // Backup important files
         if (file_exists(".env")) {
             self::exec("cp .env .env.backup");
         }
@@ -38,20 +35,12 @@ class MigrateCommand
             self::exec("cp -R storage storage.backup");
         }
 
-        // Download the latest v4 panel
         self::exec("curl -L -o panel.tar.gz https://github.com/Jexactyl/Jexactyl/releases/download/v4.0.0-beta7/panel.tar.gz");
-
-        // Extract into temporary folder first
         self::exec("mkdir -p panel-temp");
         self::exec("tar -xzf panel.tar.gz -C panel-temp --strip-components=1");
-
-        // Copy files from temp folder to working directory (overwrite existing files)
         self::exec("rsync -a --exclude='.env' --exclude='storage' panel-temp/ ./");
-
-        // Clean up
         self::exec("rm -rf panel-temp panel.tar.gz");
 
-        // Restore storage and .env
         if (is_dir("storage.backup")) {
             self::exec("cp -R storage.backup/* storage/ || true");
             self::exec("rm -rf storage.backup");
@@ -60,16 +49,23 @@ class MigrateCommand
             self::exec("mv .env.backup .env");
         }
 
-        // Set correct permissions for Laravel cache/storage
         self::exec("chmod -R 755 storage bootstrap/cache");
 
-        // Install PHP dependencies
-        self::exec("composer install --no-dev --optimize-autoloader");
+        $emailFile = $dir . "/app/Console/Commands/Environment/EmailSettingsCommand.php";
+        if (file_exists($emailFile)) {
+            $contents = file_get_contents($emailFile);
+            $contents = str_replace(
+                "Jexactyl\\Traits\\Commands\\EnvironmentWriterTrait",
+                "Everest\\Traits\\Commands\\EnvironmentWriterTrait",
+                $contents
+            );
+            file_put_contents($emailFile, $contents);
+            echo self::COLOR_CYAN . "Applied EmailSettingsCommand.php fix\n" . self::COLOR_RESET;
+        }
 
-        // Clear all Laravel caches
+        self::exec("composer install --no-dev --optimize-autoloader");
         self::exec("php artisan optimize:clear");
 
-        // Remove specific old migrations if they exist
         $migrations = [
             "2024_03_30_211213_create_tickets_table.php",
             "2024_03_30_211447_create_ticket_messages_table.php",
@@ -80,17 +76,13 @@ class MigrateCommand
             $path = "$dir/database/migrations/$mig";
             if (file_exists($path)) {
                 unlink($path);
-                echo self::COLOR_CYAN . "Deleted disturbing migration: $path\n" . self::COLOR_RESET;
+                echo self::COLOR_CYAN . "Deleted migration: $path\n" . self::COLOR_RESET;
             }
         }
 
-        // Run database migrations and seeders
         self::exec("php artisan migrate --seed --force");
-
-        // Restart queues
+        self::exec("chown -R www-data:www-data $dir/*"); 
         self::exec("php artisan queue:restart");
-
-        // Bring the application back online
         self::exec("php artisan up");
 
         echo self::COLOR_GREEN . "✅ Migration to v4 completed successfully!\n" . self::COLOR_RESET;
