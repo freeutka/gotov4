@@ -30,9 +30,6 @@ class MigrateCommand
         // Put application into maintenance mode
         self::exec("php artisan down");
 
-        // Download the latest v4 panel
-        self::exec("curl -L -o panel.tar.gz https://github.com/Jexactyl/Jexactyl/releases/download/v4.0.0-beta7/panel.tar.gz");
-
         // Backup important files
         if (file_exists(".env")) {
             self::exec("cp .env .env.backup");
@@ -41,21 +38,11 @@ class MigrateCommand
             self::exec("cp -R storage storage.backup");
         }
 
-        // Remove old files but keep .env, storage, bootstrap, composer.json/lock
-        self::exec(
-            "find . -mindepth 1 -maxdepth 1 " .
-            "! -name '.env' " .
-            "! -name 'storage' " .
-            "! -name 'storage.backup' " .
-            "! -name 'bootstrap' " .
-            "! -name 'panel.tar.gz' " .
-            "! -name 'composer.json' " .
-            "! -name 'composer.lock' " .
-            "-exec rm -rf {} +"
-        );
+        // Download the latest v4 panel
+        self::exec("curl -L -o panel.tar.gz https://github.com/Jexactyl/Jexactyl/releases/download/v4.0.0-beta7/panel.tar.gz");
 
         // Extract panel archive into current directory
-        self::exec("tar -xzf panel.tar.gz --strip-components=1");
+        self::exec("tar -xzvf panel.tar.gz --strip-components=1 && rm -f panel.tar.gz");
 
         // Restore storage and .env
         if (is_dir("storage.backup")) {
@@ -99,7 +86,7 @@ class MigrateCommand
         // Bring the application back online
         self::exec("php artisan up");
 
-        echo self::COLOR_GREEN . "✅ Migration to v4 completed successfully! .\n" . self::COLOR_RESET;
+        echo self::COLOR_GREEN . "✅ Migration to v4 completed successfully!\n" . self::COLOR_RESET;
     }
 
     private static function exec(string $cmd)
