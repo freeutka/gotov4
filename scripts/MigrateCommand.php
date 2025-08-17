@@ -41,8 +41,15 @@ class MigrateCommand
         // Download the latest v4 panel
         self::exec("curl -L -o panel.tar.gz https://github.com/Jexactyl/Jexactyl/releases/download/v4.0.0-beta7/panel.tar.gz");
 
-        // Extract panel archive into current directory
-        self::exec("tar -xzvf panel.tar.gz --strip-components=1 && rm -f panel.tar.gz");
+        // Extract into temporary folder first
+        self::exec("mkdir -p panel-temp");
+        self::exec("tar -xzf panel.tar.gz -C panel-temp --strip-components=1");
+
+        // Copy files from temp folder to working directory (overwrite existing files)
+        self::exec("rsync -a --exclude='.env' --exclude='storage' panel-temp/ ./");
+
+        // Clean up
+        self::exec("rm -rf panel-temp panel.tar.gz");
 
         // Restore storage and .env
         if (is_dir("storage.backup")) {
