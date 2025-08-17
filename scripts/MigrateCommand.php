@@ -3,11 +3,11 @@ namespace Scripts;
 
 class MigrateCommand
 {
-    private const COLOR_RESET = "\033[0m";
-    private const COLOR_GREEN = "\033[1;32m";
-    private const COLOR_RED   = "\033[1;31m";
-    private const COLOR_YELLOW= "\033[1;33m";
-    private const COLOR_CYAN  = "\033[1;36m";
+    private const COLOR_RESET  = "\033[0m";
+    private const COLOR_GREEN  = "\033[1;32m";
+    private const COLOR_RED    = "\033[1;31m";
+    private const COLOR_YELLOW = "\033[1;33m";
+    private const COLOR_CYAN   = "\033[1;36m";
 
     public static function run()
     {
@@ -41,8 +41,18 @@ class MigrateCommand
             self::exec("cp -R storage storage.backup");
         }
 
-        // Remove old files except .env, storage, bootstrap
-        self::exec("find . -mindepth 1 -maxdepth 1 ! -name '.env' ! -name 'storage' ! -name 'storage.backup' ! -name 'bootstrap' ! -name 'panel.tar.gz' -exec rm -rf {} +");
+        // Remove old files but keep .env, storage, bootstrap, composer.json/lock
+        self::exec(
+            "find . -mindepth 1 -maxdepth 1 " .
+            "! -name '.env' " .
+            "! -name 'storage' " .
+            "! -name 'storage.backup' " .
+            "! -name 'bootstrap' " .
+            "! -name 'panel.tar.gz' " .
+            "! -name 'composer.json' " .
+            "! -name 'composer.lock' " .
+            "-exec rm -rf {} +"
+        );
 
         // Extract panel archive into current directory
         self::exec("tar -xzf panel.tar.gz --strip-components=1");
@@ -59,7 +69,7 @@ class MigrateCommand
         // Set correct permissions for Laravel cache/storage
         self::exec("chmod -R 755 storage bootstrap/cache");
 
-        // Install PHP dependencies (now should be v4 composer.json)
+        // Install PHP dependencies
         self::exec("composer install --no-dev --optimize-autoloader");
 
         // Clear all Laravel caches
@@ -89,7 +99,7 @@ class MigrateCommand
         // Bring the application back online
         self::exec("php artisan up");
 
-        echo self::COLOR_GREEN . "✅ Migration to v4 completed successfully! Your panel should now display v4.\n" . self::COLOR_RESET;
+        echo self::COLOR_GREEN . "✅ Migration to v4 completed successfully! .\n" . self::COLOR_RESET;
     }
 
     private static function exec(string $cmd)
