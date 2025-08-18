@@ -32,14 +32,12 @@ echo
 read -rp "Do you want to create a backup? (y/n): " backup
 if [[ "$backup" =~ ^[Yy]$ ]]; then
   echo -e "${BLUE}→ Creating backup...${RESET}"
-  echo ">>> cp -R $dir ${dir}-backup"
   cp -R "$dir" "${dir}-backup"
   echo -e "${GREEN}✔ Backup created at ${dir}-backup${RESET}"
-  echo
 else
   echo -e "${YELLOW}⚠ Backup skipped. (Not recommended)${RESET}"
-  echo
 fi
+echo
 
 cd "$dir"
 
@@ -52,25 +50,13 @@ echo
 # ---------- Step 4: Download new version ----------
 echo -e "${BLUE}→ Downloading Jexactyl v4...${RESET}"
 curl -L -o panel.tar.gz https://github.com/Jexactyl/Jexactyl/releases/download/v4.0.0-beta7/panel.tar.gz
-
-mkdir -p panel-temp
-tar -xzf panel.tar.gz -C panel-temp --strip-components=1
-
-# ---------- Step 5: Replace files ----------
-echo -e "${BLUE}→ Updating files...${RESET}"
-rsync -a --exclude='.env' --exclude='storage' panel-temp/ ./
-rm -rf panel-temp panel.tar.gz
-chmod -R 755 storage bootstrap/cache
-echo -e "${GREEN}✔ Files updated.${RESET}"
+tar -xzf panel.tar.gz
+rm panel.tar.gz
+chmod -R 755 storage/* bootstrap/cache
+echo -e "${GREEN}✔ Files extracted and permissions set.${RESET}"
 echo
 
-# ---------- Step 6: Dependencies ----------
-echo -e "${BLUE}→ Installing PHP dependencies...${RESET}"
-composer install --no-dev --optimize-autoloader
-echo -e "${GREEN}✔ Dependencies installed.${RESET}"
-echo
-
-# ---------- Step 7: Patch EmailSettingsCommand ----------
+# ---------- Step 5: Patch EmailSettingsCommand ----------
 file="$dir/app/Console/Commands/Environment/EmailSettingsCommand.php"
 if [[ -f "$file" ]]; then
   sed -i "s|Jexactyl\\\\Traits\\\\Commands\\\\EnvironmentWriterTrait|Everest\\\\Traits\\\\Commands\\\\EnvironmentWriterTrait|g" "$file"
@@ -80,43 +66,40 @@ else
 fi
 echo
 
-# ---------- Step 8: Clear cache ----------
+# ---------- Step 6: Install dependencies ----------
+echo -e "${BLUE}→ Installing PHP dependencies...${RESET}"
+composer install --no-dev --optimize-autoloader
+echo -e "${GREEN}✔ Dependencies installed.${RESET}"
+echo
+
+# ---------- Step 7: Clear cache ----------
 echo -e "${BLUE}→ Clearing cache...${RESET}"
 php artisan optimize:clear
 echo -e "${GREEN}✔ Cache cleared.${RESET}"
 echo
 
-# ---------- Step 9: Remove old migrations ----------
+# ---------- Step 8: Remove old migrations ----------
 echo -e "${BLUE}→ Removing old migrations...${RESET}"
-declare -a migrations=(
-  "2024_03_30_211213_create_tickets_table.php"
-  "2024_03_30_211447_create_ticket_messages_table.php"
-  "2024_04_15_203406_add_theme_table.php"
-  "2024_05_01_124250_add_deployable_column_to_nodes_table.php"
-)
-
-for mig in "${migrations[@]}"; do
-  path="$dir/database/migrations/$mig"
-  if [[ -f "$path" ]]; then
-    rm -f "$path"
-    echo -e "${GREEN}✔ Removed:${RESET} $path"
-  fi
-done
+rm -f "$dir/database/migrations/2024_03_30_211213_create_tickets_table.php"
+rm -f "$dir/database/migrations/2024_03_30_211447_create_ticket_messages_table.php"
+rm -f "$dir/database/migrations/2024_04_15_203406_add_theme_table.php"
+rm -f "$dir/database/migrations/2024_05_01_124250_add_deployable_column_to_nodes_table.php"
+echo -e "${GREEN}✔ Old migrations removed.${RESET}"
 echo
 
-# ---------- Step 10: Database migration ----------
+# ---------- Step 9: Run migrations ----------
 echo -e "${BLUE}→ Running database migrations...${RESET}"
 php artisan migrate --seed --force
 echo -e "${GREEN}✔ Database updated.${RESET}"
 echo
 
-# ---------- Step 11: Permissions ----------
+# ---------- Step 10: Fix permissions ----------
 echo -e "${BLUE}→ Setting correct permissions...${RESET}"
 chown -R www-data:www-data "$dir"/*
 echo -e "${GREEN}✔ Permissions updated.${RESET}"
 echo
 
-# ---------- Step 12: Restart queues and bring panel online ----------
+# ---------- Step 11: Restart queues & bring panel online ----------
 echo -e "${BLUE}→ Restarting queues and starting panel...${RESET}"
 php artisan queue:restart
 php artisan up
